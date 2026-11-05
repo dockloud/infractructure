@@ -49,12 +49,13 @@ services:
       retries: 5
 
   auth-migrate:
-    image: ghcr.io/dockloud/auth:v1.0
+    image: ghcr.io/dockloud/auth:v1.1
     container_name: auth-migrate
     command: [ "./migrate", "up" ]
 
     environment:
       DATABASE_URL: postgres://${AUTH_USER}:${AUTH_PASSWORD}@postgres:5432/dockloud_auth?sslmode=disable
+      JWT_AUTH_KEY: ${JWT_AUTH_KEY}
 
     depends_on:
       postgres:
@@ -63,7 +64,7 @@ services:
     restart: "no"
 
   auth:
-    image: ghcr.io/dockloud/auth:v1.0
+    image: ghcr.io/dockloud/auth:v1.1
     container_name: auth
 
     ports:
@@ -72,6 +73,7 @@ services:
     environment:
       DATABASE_URL: postgres://${AUTH_USER}:${AUTH_PASSWORD}@postgres:5432/dockloud_auth?sslmode=disable
       CACHE_URL: redis://redis:6379/0
+      JWT_AUTH_KEY: ${JWT_AUTH_KEY}
 
     depends_on:
       auth-migrate:
