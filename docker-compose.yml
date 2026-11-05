@@ -9,12 +9,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
 
-      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
-      DOCUMENT_DB_PASSWORD: ${DOCUMENT_DB_PASSWORD}
-      LINK_DB_PASSWORD: ${LINK_DB_PASSWORD}
+      AUTH_USER: ${AUTH_USER}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
+      DOCUMENT_USER: ${DOCUMENT_USER}
+      DOCUMENT_PASSWORD: ${DOCUMENT_PASSWORD}
+      LINK_USER: ${LINK_USER}
+      LINK_PASSWORD: ${LINK_PASSWORD}
 
     ports:
-      - "5433:5432"
+      - ":5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -32,7 +35,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "6380:6379"
+      - ":6379"
 
     volumes:
       - redis_data:/var/lib/redis/data
@@ -44,6 +47,37 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  auth-migrate:
+    image: ghcr.io/dockloud/auth:v1.0
+    container_name: auth-migrate
+    command: [ "./migrate", "up" ]
+
+    environment:
+      DATABASE_URL: postgres://${AUTH_USER}:${AUTH_PASSWORD}@postgres:5432/dockloud_auth?sslmode=disable
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: "no"
+
+  auth:
+    image: ghcr.io/dockloud/auth:v1.0
+    container_name: auth
+
+    ports:
+      - ":50150"
+
+    environment:
+      DATABASE_URL: postgres://${AUTH_USER}:${AUTH_PASSWORD}@postgres:5432/dockloud_auth?sslmode=disable
+      CACHE_URL: redis://redis:6379/0
+
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+
+    restart: unless-stopped
 
 volumes:
   postgres_data:
