@@ -53,7 +53,7 @@ services:
 
   auth:
     image: ghcr.io/dockloud/auth:v1.1
-    container_name: auth
+    container_name: dockloud-auth
     ports:
       - ":50150"
     environment:
@@ -78,7 +78,7 @@ services:
 
   document:
     image: ghcr.io/dockloud/document:v1.0
-    container_name: document
+    container_name: dockloud-document
     ports:
       - ":50250"
     environment:
