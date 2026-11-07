@@ -3,26 +3,21 @@ services:
     image: postgres:17-alpine
     container_name: dockloud-postgres
     restart: unless-stopped
-
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
-
       AUTH_USER: ${AUTH_USER}
       AUTH_PASSWORD: ${AUTH_PASSWORD}
       DOCUMENT_USER: ${DOCUMENT_USER}
       DOCUMENT_PASSWORD: ${DOCUMENT_PASSWORD}
       LINK_USER: ${LINK_USER}
       LINK_PASSWORD: ${LINK_PASSWORD}
-
     ports:
       - ":5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
       interval: 5s
@@ -33,15 +28,11 @@ services:
     image: redis:8-alpine
     container_name: dockloud-redis
     restart: unless-stopped
-
     ports:
       - ":6379"
-
     volumes:
       - redis_data:/var/lib/redis/data
-
     command: redis-server --appendonly yes
-
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
@@ -52,33 +43,51 @@ services:
     image: ghcr.io/dockloud/auth:v1.1
     container_name: auth-migrate
     command: [ "./migrate", "up" ]
-
     environment:
       DATABASE_URL: postgres://${AUTH_USER}:${AUTH_PASSWORD}@postgres:5432/dockloud_auth?sslmode=disable
       JWT_AUTH_KEY: ${JWT_AUTH_KEY}
-
     depends_on:
       postgres:
         condition: service_healthy
-
     restart: "no"
 
   auth:
     image: ghcr.io/dockloud/auth:v1.1
     container_name: auth
-
     ports:
       - ":50150"
-
     environment:
       DATABASE_URL: postgres://${AUTH_USER}:${AUTH_PASSWORD}@postgres:5432/dockloud_auth?sslmode=disable
       CACHE_URL: redis://redis:6379/0
       JWT_AUTH_KEY: ${JWT_AUTH_KEY}
-
     depends_on:
       auth-migrate:
         condition: service_completed_successfully
+    restart: unless-stopped
 
+  document-migrate:
+    image: ghcr.io/dockloud/document:v1.0
+    container_name: document-migrate
+    command: [ "./migrate", "up" ]
+    environment:
+      DATABASE_URL: postgres://${DOCUMENT_USER}:${DOCUMENT_PASSWORD}@postgres:5432/dockloud_document?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  document:
+    image: ghcr.io/dockloud/document:v1.0
+    container_name: document
+    ports:
+      - ":50250"
+    environment:
+      DATABASE_URL: postgres://${DOCUMENT_USER}:${DOCUMENT_PASSWORD}@postgres:5432/dockloud_document?sslmode=disable
+      CACHE_URL: redis://redis:6379/1
+      JWT_AUTH_KEY: ${JWT_AUTH_KEY}
+    depends_on:
+      document-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:
