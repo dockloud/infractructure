@@ -64,6 +64,11 @@ services:
       auth-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "/app/grpc_health_probe", "-addr=:50150" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
 
   document-migrate:
     image: ghcr.io/dockloud/document:v1.0
@@ -80,7 +85,7 @@ services:
     image: ghcr.io/dockloud/document:v1.0
     container_name: dockloud-document
     ports:
-      - ":50250"
+      - ":50150"
     environment:
       DATABASE_URL: postgres://${DOCUMENT_USER}:${DOCUMENT_PASSWORD}@postgres:5432/dockloud_document?sslmode=disable
       CACHE_URL: redis://redis:6379/1
@@ -88,6 +93,27 @@ services:
     depends_on:
       document-migrate:
         condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "/app/grpc_health_probe", "-addr=:50150" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  gateway:
+    image: ghcr.io/dockloud/gateway:v1.0
+    container_name: dockloud-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      AUTH_CONN_ADDR: auth:50150
+      DOC_CONN_ADDR: document:50150
+      JWT_AUTH_KEY: ${JWT_AUTH_KEY}
+    depends_on:
+      auth:
+        condition: service_healthy
+      document:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
